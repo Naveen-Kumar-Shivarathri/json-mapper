@@ -10,9 +10,9 @@
     </parent>
     <groupId>com.oneentropy</groupId>
     <artifactId>json-mapper</artifactId>
-    <version>10.2022-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
     <name>json-mapper</name>
-    <description>JSON Path to Json</description>
+    <description>Demo project for Spring Boot</description>
     <properties>
         <java.version>11</java.version>
     </properties>
@@ -50,13 +50,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>20220924</version>
-        </dependency>
-
-
-        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.24</version>
@@ -70,5 +63,14 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

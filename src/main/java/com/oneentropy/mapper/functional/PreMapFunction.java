@@ -7,6 +7,6 @@ import java.util.Map;
 
 public interface PreMapFunction<T extends Map<String,String>, U extends List<AttributeMap>> {
 
-    void apply(T data, U attributeMaps);
+    void apply();
 
 }

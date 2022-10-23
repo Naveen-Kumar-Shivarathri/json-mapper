@@ -18,7 +18,7 @@ public class AttributeMap {
     private String defaultValue;
 
     public boolean hasDefaultValue(){
-        return this.defaultValue!=null;
+        return this.defaultValue==null;
     }
 
     public boolean containsExpression(){
