@@ -12,7 +12,7 @@
     <artifactId>json-mapper</artifactId>
     <version>10.2022-SNAPSHOT</version>
     <name>json-mapper</name>
-    <description>Demo project for Spring Boot</description>
+    <description>JSON Path to Json</description>
     <properties>
         <java.version>11</java.version>
     </properties>
