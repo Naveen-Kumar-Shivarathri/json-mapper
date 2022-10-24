@@ -16,30 +16,15 @@ import java.util.Map;
 @Qualifier("defaultValueInterpreter")
 public class DefaultValueInterpreterImpl implements ValueInterpreter {
 
-    private static final String REGX = "regx";
-
     @Override
     public String interpret(AttributeMap attributeMap, Map<String, String> data) throws InterpretException {
-        String meta = extractMetaInformation(attributeMap.getOriginalKey());
-
         if (!attributeMap.hasDefaultValue())
             return null;
 
         List<String> tokens = MappingUtil.tokenizeExpression(attributeMap.getDefaultValue());
-
         return handleExpressionEvaluation(tokens, data, attributeMap);
     }
 
-    public String interpret(String attribute, AttributeMap attributeMap, Map<String, String> data) throws InterpretException {
-        String meta = extractMetaInformation(attributeMap.getOriginalKey());
-
-        if (!attributeMap.hasDefaultValue())
-            return null;
-
-        List<String> tokens = MappingUtil.tokenizeExpression(attributeMap.getDefaultValue());
-
-        return handleExpressionEvaluation(attribute,tokens, data, attributeMap);
-    }
     private String handleExpressionEvaluation(List<String> exprTokens, Map<String, String> data, AttributeMap attributeMap) {
         if (MappingUtil.isZeroSized(exprTokens))
             return "";
@@ -58,22 +43,6 @@ public class DefaultValueInterpreterImpl implements ValueInterpreter {
         return buffer.toString();
     }
 
-    private String handleExpressionEvaluation(String attribute, List<String> exprTokens, Map<String, String> data, AttributeMap attributeMap) {
-        if (MappingUtil.isZeroSized(exprTokens))
-            return "";
-        StringBuilder buffer = new StringBuilder();
-        for (String expr : exprTokens) {
-            if (MappingUtil.isSourceValue(expr)) {
-                if (data.containsKey(attribute)) {
-                    buffer.append(data.get(attribute) == null ? "" : data.get(attribute));
-                }
-            } else {
-                buffer.append(extractContentFromQuotations(expr));
-            }
-        }
-
-        return buffer.toString();
-    }
     private String extractContentFromQuotations(String input) {
         if (input.startsWith("\"") && input.endsWith("\""))
             return input.substring(1, input.length() - 1);
@@ -84,13 +53,6 @@ public class DefaultValueInterpreterImpl implements ValueInterpreter {
         if (input.contains(","))
             return input.substring(0, input.lastIndexOf(","));
         return input;
-    }
-
-    private String extractMetaInformation(String input) {
-        if (input.contains(",")) {
-            return input.substring(input.lastIndexOf(",") + 1);
-        }
-        return "";
     }
 
 }

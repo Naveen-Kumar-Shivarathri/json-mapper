@@ -27,6 +27,14 @@ public class MappingUtil {
         return true;
     }
 
+    public static boolean hasContent(Object[] values) {
+        for(Object value: values){
+            if(!hasContent(value))
+                return false;
+        }
+        return true;
+    }
+
     public static boolean isZeroSized(Object value) {
         if (value == null)
             return true;
@@ -86,7 +94,7 @@ public class MappingUtil {
     }
 
     public static boolean isAnArray(String token) {
-        return token.matches(".*\\[\\]");
+        return token.matches(".*\\[\\d*\\]");
     }
 
     public static boolean arrayTokenContainsIndex(String token) {
@@ -104,6 +112,19 @@ public class MappingUtil {
         }
 
         return -1;
+    }
+
+    public static String getArrayKey(String token) {
+        Pattern pattern = Pattern.compile("(.*)\\[\\d*\\]");//NOSONAR Input is config driven
+        Matcher matcher = pattern.matcher(token);
+        if (matcher.matches()) {
+            String key = matcher.group(1);
+            if(key!=null)
+                return key;
+
+        }
+
+        return "";
     }
 
     public static List<String> tokenizeExpression(String expression) {

@@ -4,6 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 public interface PostMapFunction<T extends JsonNode> {
 
-    void apply();
+    void apply(T mappedData);
 
 }

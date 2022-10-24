@@ -1,6 +1,7 @@
 package com.oneentropy.mapper.interpreters;
 
 import com.oneentropy.mapper.exceptions.InterpretException;
+import com.oneentropy.mapper.exceptions.MandatoryAttributeException;
 import com.oneentropy.mapper.model.AttributeMap;
 
 import java.util.Map;
