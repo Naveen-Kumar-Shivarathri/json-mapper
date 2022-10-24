@@ -5,4 +5,4 @@
 productName = gcp.product.name
 version = gcp.product.version = "V " + $srcValue
 createdBy = gcp.product.people[] = "CR\=" + $srcValue
-modifiedBy = gcp.product.people[] = "MD\=" + $srcValue
+modifiedBy = gcp.product.people[1] = "MD\=" + $srcValue
