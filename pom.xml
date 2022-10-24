@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.oneentropy</groupId>
     <artifactId>json-mapper</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>10.2022-SNAPSHOT</version>
     <name>json-mapper</name>
     <description>Demo project for Spring Boot</description>
     <properties>
