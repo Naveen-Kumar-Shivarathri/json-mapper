@@ -9,6 +9,7 @@ import com.oneentropy.mapper.functional.PostMapFunction;
 import com.oneentropy.mapper.functional.PreMapFunction;
 import com.oneentropy.mapper.interpreters.ValueInterpreter;
 import com.oneentropy.mapper.model.AttributeMap;
+import com.oneentropy.mapper.service.MappingConfReaderService;
 import com.oneentropy.mapper.service.MappingService;
 import com.oneentropy.mapper.util.MappingUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,9 @@ public class MappingServiceImpl implements MappingService {
     @Autowired
     @Qualifier("defaultValueInterpreter")
     private ValueInterpreter defaultValueInterpreter;
+
+    @Autowired
+    private MappingConfReaderService mappingConfReaderService;
 
 
     @Override
@@ -56,6 +60,18 @@ public class MappingServiceImpl implements MappingService {
         if (postMapFunction != null)
             postMapFunction.apply(template);
         return template;
+    }
+
+    @Override
+    public JsonNode mapDataToJsonNode(List<Map<String, String>> data, String mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+        List<AttributeMap> attributeMaps = mappingConfReaderService.convertConfToAttributeMap(mappingConf);
+        return mapDataToJsonNode(data, attributeMaps, preMapFunction,postMapFunction);
+    }
+
+    @Override
+    public JsonNode mapDataToJsonNode(Map<String, String> data, String mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+        List<AttributeMap> attributeMaps = mappingConfReaderService.convertConfToAttributeMap(mappingConf);
+        return mapDataToJsonNode(null,data, -1,attributeMaps, preMapFunction,postMapFunction);
     }
 
     private void processMapping(ObjectNode workingCopy, Map<String, String> data, int iteration, List<AttributeMap> attributeMapList) throws InterpretException {
@@ -116,27 +132,35 @@ public class MappingServiceImpl implements MappingService {
         String key = MappingUtil.getArrayKey(pathToken);
         if (MappingUtil.arrayTokenContainsIndex(pathToken)) {
             int index = MappingUtil.getIndexFromArrayToken(pathToken);
-            workingCopy = (ObjectNode) workingCopy.get(key);
-            ArrayNode arrayNode = workingCopy.arrayNode();
+            if(!workingCopy.has(key))
+                workingCopy.putArray(key);
+            ArrayNode arrayNode = (ArrayNode) workingCopy.get(key);
             if (index != -1) {
-                if (index > arrayNode.size()) {
-                    for (int indexIterator = arrayNode.size() - 1; indexIterator <= index; indexIterator++)
-                        arrayNode.set(index, JsonNodeFactory.instance.objectNode());
+                if (index > arrayNode.size()-1) {
+                    int startIndex = arrayNode.size()==0?0:arrayNode.size()-1;
+                    for (int indexIterator = startIndex; indexIterator <= index; indexIterator++)
+                        arrayNode.insert(index, JsonNodeFactory.instance.objectNode());
                 }
                 workingCopy = (ObjectNode) arrayNode.get(index);
             } else {
                 if (arrayNode.size() > 1)
                     workingCopy = (ObjectNode) arrayNode.get(arrayNode.size() - 1);
-                else
-                    workingCopy = (ObjectNode) arrayNode.set(0, JsonNodeFactory.instance.objectNode());
+                else {
+                    arrayNode.insert(0, JsonNodeFactory.instance.objectNode());
+                    workingCopy = (ObjectNode) arrayNode.get(0);
+                }
             }
         } else {
-            workingCopy = (ObjectNode) workingCopy.get(key);
-            ArrayNode arrayNode = workingCopy.arrayNode();
-            if (arrayNode.size() > 1)
+            if(!workingCopy.has(key))
+                workingCopy.putArray(key);
+            ArrayNode arrayNode = (ArrayNode) workingCopy.get(key);
+            if (arrayNode.size() > 0)
                 workingCopy = (ObjectNode) arrayNode.get(arrayNode.size() - 1);
-            else
-                workingCopy = (ObjectNode) arrayNode.set(0, JsonNodeFactory.instance.objectNode());
+            else{
+                arrayNode.insert(0, JsonNodeFactory.instance.objectNode());
+                workingCopy = (ObjectNode) arrayNode.get(0);
+            }
+
         }
 
         return workingCopy;
@@ -149,7 +173,7 @@ public class MappingServiceImpl implements MappingService {
             if (!workingCopy.has(key))
                 workingCopy.putArray(key);
             ArrayNode arrayNode = (ArrayNode) workingCopy.get(key);
-            accomodateIndexInsert(arrayNode, index, value);
+            accommodateIndexInsert(arrayNode, index, value);
         } else {
             ArrayNode arrayNode = null;
             if (workingCopy.has(key))
@@ -157,13 +181,13 @@ public class MappingServiceImpl implements MappingService {
             else {
                 arrayNode = workingCopy.putArray(key);
             }
-            accomodateIndexInsert(arrayNode, iteration, value);
+            accommodateIndexInsert(arrayNode, iteration, value);
 
         }
 
     }
 
-    private void accomodateIndexInsert(ArrayNode arrayNode, int index, String value) {
+    private void accommodateIndexInsert(ArrayNode arrayNode, int index, String value) {
         if (index != -1) {
             insertElementsIntoArray(arrayNode, index, value);
         } else {
