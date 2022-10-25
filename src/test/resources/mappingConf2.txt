@@ -1,12 +1,10 @@
 #Product JSON Mapping
-#Windchill internal attribute name = JSON Path = default value (optional)
-
 
 fName,required = employee.info.pii.firstName
 lName = employee.info.pii.lastName
 age = employee.info.pii.age
 dob = employee.info.pii.dateOfBirth
-seniorityDateStartA = employee.info.experience[].companyA[] = "start Date:"+$srcValue+"."
-seniorityDateEndA = employee.info.experience[].companyA[] = "End Date:"+$srcValue+"."
-seniorityDateStartB = employee.info.experience[].companyB[] = "start Date:"+$srcValue+"."
-seniorityDateEndB = employee.info.experience[].companyB[] = "End Date:"+$srcValue+"."
+seniorityDateStartA = employee.info.experience[0].companyA[] = "start Date:"+$srcValue+"."
+seniorityDateEndA = employee.info.experience[0].companyA[] = "End Date:"+$srcValue+"."
+seniorityDateStartB = employee.info.experience[0].companyB[] = "start Date:"+$srcValue+"."
+seniorityDateEndB = employee.info.experience[0].companyB[] = "End Date:"+$srcValue+"."

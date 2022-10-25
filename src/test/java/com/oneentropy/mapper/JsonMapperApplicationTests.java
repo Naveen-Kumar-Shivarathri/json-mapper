@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.oneentropy.mapper.conf.MapperConfig;
 import com.oneentropy.mapper.exceptions.InterpretException;
 import com.oneentropy.mapper.model.AttributeMap;
+import com.oneentropy.mapper.model.Data;
 import com.oneentropy.mapper.model.MappingConf;
 import com.oneentropy.mapper.service.MappingConfReaderService;
 import com.oneentropy.mapper.service.MappingService;
@@ -62,7 +63,8 @@ class JsonMapperApplicationTests {
 		data.put("version","1.0.0");
 		data.put("createdBy","person-1");
 		data.put("modifiedBy","person-2");
-		JsonNode node = mappingService.mapDataToJsonNode(null,data,-1,attributeMaps,null,null);
+		Data dataObj = new Data(data);
+		JsonNode node = mappingService.mapDataToJsonNode(null,dataObj,-1,attributeMaps,null,null);
 		Assertions.assertEquals("Product-1",node.get("gcp").get("product").get("name").asText());
 
 	}
@@ -83,7 +85,8 @@ class JsonMapperApplicationTests {
 		data.put("seniorityDateEndA","1stJan, 2008");
 		data.put("seniorityDateStartB","1stJan, 2008");
 		data.put("seniorityDateEndB","1stJan, 2016");
-		JsonNode node = mappingService.mapDataToJsonNode(null,data,-1,attributeMaps,null,null);
+		Data dataObj = new Data(data);
+		JsonNode node = mappingService.mapDataToJsonNode(null,dataObj,-1,attributeMaps,null,null);
 		log.info("node:{}",node);
 
 

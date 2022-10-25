@@ -9,6 +9,9 @@ import com.oneentropy.mapper.functional.PostMapFunction;
 import com.oneentropy.mapper.functional.PreMapFunction;
 import com.oneentropy.mapper.interpreters.ValueInterpreter;
 import com.oneentropy.mapper.model.AttributeMap;
+import com.oneentropy.mapper.model.Data;
+import com.oneentropy.mapper.model.MultiLevelData;
+import com.oneentropy.mapper.model.SingleLevelData;
 import com.oneentropy.mapper.service.MappingConfReaderService;
 import com.oneentropy.mapper.service.MappingService;
 import com.oneentropy.mapper.util.MappingUtil;
@@ -37,25 +40,40 @@ public class MappingServiceImpl implements MappingService {
 
 
     @Override
-    public JsonNode mapDataToJsonNode(List<Map<String, String>> dataList, List<AttributeMap> attributeMapList, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+    public JsonNode mapDataToJsonNode(SingleLevelData singleLevelData, List<AttributeMap> attributeMapList, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
 
         ObjectNode template = JsonNodeFactory.instance.objectNode();
         int iteration = 0;
-        for (Map<String, String> data : dataList) {
-            mapDataToJsonNode(template, data, iteration, attributeMapList, preMapFunction, postMapFunction);
+        for (Data data : singleLevelData.getSingleLevelData()) {
+            mapDataToJsonNode(template, data, 0, attributeMapList, preMapFunction, postMapFunction);
             iteration++;
         }
         return template;
     }
 
     @Override
-    public JsonNode mapDataToJsonNode(JsonNode template, Map<String, String> data, int iteration, List<AttributeMap> attributeMapList, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+    public JsonNode mapDataToJsonNode(JsonNode template, SingleLevelData singleLevelData, int activationLevel, List<AttributeMap> attributeMapList, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+
+        for (Data data : singleLevelData.getSingleLevelData()) {
+            mapDataToJsonNode(template, data, activationLevel, attributeMapList, preMapFunction, postMapFunction);
+        }
+        return template;
+    }
+
+    @Override
+    public JsonNode mapDataToJsonNode(JsonNode template, SingleLevelData singleLevelData, int activationLevel, String mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+        List<AttributeMap> attributeMaps = mappingConfReaderService.convertConfToAttributeMap(mappingConf);
+        return mapDataToJsonNode(template,singleLevelData,activationLevel,attributeMaps,preMapFunction,postMapFunction);
+    }
+
+    @Override
+    public JsonNode mapDataToJsonNode(JsonNode template, Data data, int activationLevel, List<AttributeMap> attributeMapList, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
         if (preMapFunction != null)
-            preMapFunction.apply(data, attributeMapList);
+            preMapFunction.apply(data.getData(), attributeMapList);
         if (!MappingUtil.hasContent(template))
             template = JsonNodeFactory.instance.objectNode();
 
-        processMapping((ObjectNode) template, data, iteration, attributeMapList);
+        processMapping((ObjectNode) template, data.getData(), activationLevel, attributeMapList);
 
         if (postMapFunction != null)
             postMapFunction.apply(template);
@@ -63,18 +81,50 @@ public class MappingServiceImpl implements MappingService {
     }
 
     @Override
-    public JsonNode mapDataToJsonNode(List<Map<String, String>> data, String mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+    public JsonNode mapDataToJsonNode(SingleLevelData singleLevelData, String mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
         List<AttributeMap> attributeMaps = mappingConfReaderService.convertConfToAttributeMap(mappingConf);
-        return mapDataToJsonNode(data, attributeMaps, preMapFunction,postMapFunction);
+        return mapDataToJsonNode(singleLevelData, attributeMaps, preMapFunction, postMapFunction);
     }
 
     @Override
-    public JsonNode mapDataToJsonNode(Map<String, String> data, String mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+    public JsonNode mapDataToJsonNode(Data data, String mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
         List<AttributeMap> attributeMaps = mappingConfReaderService.convertConfToAttributeMap(mappingConf);
-        return mapDataToJsonNode(null,data, -1,attributeMaps, preMapFunction,postMapFunction);
+        return mapDataToJsonNode(null, data, -1, attributeMaps, preMapFunction, postMapFunction);
     }
 
-    private void processMapping(ObjectNode workingCopy, Map<String, String> data, int iteration, List<AttributeMap> attributeMapList) throws InterpretException {
+    @Override
+    public JsonNode mapDataToJsonNode(MultiLevelData multiLevelData, String[] mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+
+        if (!MappingUtil.hasContent(mappingConf))
+            throw new InterpretException("Mapping Conf cannot have null values");
+
+        ObjectNode template = JsonNodeFactory.instance.objectNode();
+        int activationLevel = 0;
+        for (SingleLevelData singleLevelData : multiLevelData.getMultiLevelData()) {
+            List<AttributeMap> attributeMaps = mappingConfReaderService.convertConfToAttributeMap(mappingConf[activationLevel]);
+            mapDataToJsonNode(template, singleLevelData, activationLevel, attributeMaps, preMapFunction, postMapFunction);
+            activationLevel++;
+        }
+        return template;
+
+    }
+
+    @Override
+    public JsonNode mapDataToJsonNode(JsonNode template, MultiLevelData multiLevelData, String[] mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
+        if (!MappingUtil.hasContent(mappingConf))
+            throw new InterpretException("Mapping Conf cannot have null values");
+        if (template == null)
+            template = JsonNodeFactory.instance.objectNode();
+        int activationLevel = 0;
+        for (SingleLevelData singleLevelData : multiLevelData.getMultiLevelData()) {
+            List<AttributeMap> attributeMaps = mappingConfReaderService.convertConfToAttributeMap(mappingConf[activationLevel]);
+            mapDataToJsonNode(template, singleLevelData, activationLevel, attributeMaps, preMapFunction, postMapFunction);
+            activationLevel++;
+        }
+        return template;
+    }
+
+    private void processMapping(ObjectNode workingCopy, Map<String, String> data, int activationLevel, List<AttributeMap> attributeMapList) throws InterpretException {
 
         if (!MappingUtil.hasContent(new Object[]{data, attributeMapList})) {
             throw new InterpretException("Data and Attributes Mapping list are required for processing");
@@ -87,76 +137,80 @@ public class MappingServiceImpl implements MappingService {
                     value = data.get(extractNonMetaInformation(attributeMap.getOriginalKey()));
                 }
                 if (value != null)
-                    insertValue(attributeMap.getPath(), value, iteration, workingCopy, attributeMap.getOriginalKey());
+                    insertValue(attributeMap.getPath(), value, activationLevel, workingCopy, attributeMap.getOriginalKey());
             }
         }
 
     }
 
-    private void insertValue(List<String> pathTokens, String value, int iteration, ObjectNode workingCopy, String attributeKey) {
+    private void insertValue(List<String> pathTokens, String value, int activationLevel, ObjectNode workingCopy, String attributeKey) {
         if (!MappingUtil.hasContent(pathTokens)) {
             log.error("Error while inserting data for attribute:{}", attributeKey);
         }
 
         ObjectNode handle = workingCopy;
+        int currentLevel = -1;
 
         for (int pathIterator = 0; pathIterator < pathTokens.size() - 1; pathIterator++) {
-            handle = navigatePath(handle, pathTokens.get(pathIterator), iteration);
+            boolean levelActivated = false;
+            if (MappingUtil.isAnArray(pathTokens.get(pathIterator)) && !MappingUtil.arrayTokenContainsIndex(pathTokens.get(pathIterator)))
+                currentLevel++;
+            if (currentLevel == activationLevel)
+                levelActivated = true;
+            handle = navigatePath(handle, pathTokens.get(pathIterator), levelActivated);
         }
         String leafPathToken = pathTokens.get(pathTokens.size() - 1);
         if (MappingUtil.isAnArray(leafPathToken)) {
-
-            insertIntoArray(leafPathToken, value, handle, iteration);
+            insertIntoArray(leafPathToken, value, handle);
         } else {
             handle.put(leafPathToken, value);
         }
 
     }
 
-    private ObjectNode navigatePath(ObjectNode workingCopy, String pathToken, int iteration) {
+    private ObjectNode navigatePath(ObjectNode workingCopy, String pathToken, boolean levelActivated) {
 
         if (!MappingUtil.isAnArray(pathToken)) {
-            if (workingCopy.has(pathToken))
-                workingCopy = (ObjectNode) workingCopy.get(pathToken);
-            else {
+            if (!workingCopy.has(pathToken))
                 workingCopy.set(pathToken, JsonNodeFactory.instance.objectNode());
-                workingCopy = (ObjectNode) workingCopy.get(pathToken);
-            }
+            workingCopy = (ObjectNode) workingCopy.get(pathToken);
         } else {
-            workingCopy = navigateArrayPath(pathToken, workingCopy, iteration);
+            workingCopy = navigateArrayPath(pathToken, workingCopy, levelActivated);
         }
         return workingCopy;
     }
 
-    private ObjectNode navigateArrayPath(String pathToken, ObjectNode workingCopy, int iteration) {
+    private ObjectNode navigateArrayPath(String pathToken, ObjectNode workingCopy, boolean levelActivated) {
         String key = MappingUtil.getArrayKey(pathToken);
         if (MappingUtil.arrayTokenContainsIndex(pathToken)) {
             int index = MappingUtil.getIndexFromArrayToken(pathToken);
-            if(!workingCopy.has(key))
+            if (!workingCopy.has(key))
                 workingCopy.putArray(key);
             ArrayNode arrayNode = (ArrayNode) workingCopy.get(key);
             if (index != -1) {
-                if (index > arrayNode.size()-1) {
-                    int startIndex = arrayNode.size()==0?0:arrayNode.size()-1;
-                    for (int indexIterator = startIndex; indexIterator <= index; indexIterator++)
+                if (index > arrayNode.size() - 1) {
+                    for (int indexIterator = arrayNode.size(); indexIterator <= index; indexIterator++)
                         arrayNode.insert(index, JsonNodeFactory.instance.objectNode());
                 }
                 workingCopy = (ObjectNode) arrayNode.get(index);
             } else {
-                if (arrayNode.size() > 1)
+                if (arrayNode.size() > 0) {
+                    arrayNode.insert(arrayNode.size(), JsonNodeFactory.instance.objectNode());
                     workingCopy = (ObjectNode) arrayNode.get(arrayNode.size() - 1);
-                else {
+                } else {
                     arrayNode.insert(0, JsonNodeFactory.instance.objectNode());
                     workingCopy = (ObjectNode) arrayNode.get(0);
                 }
             }
         } else {
-            if(!workingCopy.has(key))
+            if (!workingCopy.has(key))
                 workingCopy.putArray(key);
             ArrayNode arrayNode = (ArrayNode) workingCopy.get(key);
-            if (arrayNode.size() > 0)
+            if (arrayNode.size() > 0) {
+                if (levelActivated)
+                    arrayNode.insert(arrayNode.size(), JsonNodeFactory.instance.objectNode());
                 workingCopy = (ObjectNode) arrayNode.get(arrayNode.size() - 1);
-            else{
+            } else {
                 arrayNode.insert(0, JsonNodeFactory.instance.objectNode());
                 workingCopy = (ObjectNode) arrayNode.get(0);
             }
@@ -166,7 +220,7 @@ public class MappingServiceImpl implements MappingService {
         return workingCopy;
     }
 
-    private void insertIntoArray(String pathToken, String value, ObjectNode workingCopy, int iteration) {
+    private void insertIntoArray(String pathToken, String value, ObjectNode workingCopy) {
         String key = MappingUtil.getArrayKey(pathToken);
         if (MappingUtil.arrayTokenContainsIndex(pathToken)) {
             int index = MappingUtil.getIndexFromArrayToken(pathToken);
@@ -181,7 +235,7 @@ public class MappingServiceImpl implements MappingService {
             else {
                 arrayNode = workingCopy.putArray(key);
             }
-            accommodateIndexInsert(arrayNode, iteration, value);
+            accommodateIndexInsert(arrayNode, -1, value);
 
         }
 
@@ -196,7 +250,7 @@ public class MappingServiceImpl implements MappingService {
     }
 
     private void insertElementsIntoArray(ArrayNode arrayNode, int index, String value) {
-        if (index > arrayNode.size()-1) {
+        if (index > arrayNode.size() - 1) {
             for (int arrayIteration = arrayNode.size(); arrayIteration <= index; arrayIteration++)
                 arrayNode.insert(arrayIteration, "");
         }
@@ -204,9 +258,10 @@ public class MappingServiceImpl implements MappingService {
     }
 
     private void insertAtLatestIndex(ArrayNode arrayNode, String value) {
-        if (arrayNode.size() > 1)
+        if (arrayNode.size() > 0) {
+            arrayNode.insert(arrayNode.size(), value);
             arrayNode.set(arrayNode.size() - 1, value);
-        else
+        } else
             arrayNode.insert(0, value);
     }
 
