@@ -14,7 +14,7 @@ import java.util.Map;
 @Qualifier("attrNameInterpreter")
 public class AttributeNameInterpreterImpl implements ValueInterpreter {
 
-    private static final String MANDATORY_ATTRIBUTE = "mandatory";
+    private static final String MANDATORY_ATTRIBUTE = "required";
 
     @Override
     public String interpret(AttributeMap attributeMap, Map<String, String> data) throws InterpretException {
@@ -46,7 +46,7 @@ public class AttributeNameInterpreterImpl implements ValueInterpreter {
 
     private String extractMetaInformation(String input) {
         if (input.contains(",")) {
-            return input.substring(input.lastIndexOf(","));
+            return input.substring(input.lastIndexOf(",")+1);
         }
         return "";
     }
