@@ -105,7 +105,6 @@ public class MappingServiceImpl implements MappingService {
         }
         String leafPathToken = pathTokens.get(pathTokens.size() - 1);
         if (MappingUtil.isAnArray(leafPathToken)) {
-
             insertIntoArray(leafPathToken, value, handle, iteration);
         } else {
             handle.put(leafPathToken, value);
@@ -143,8 +142,10 @@ public class MappingServiceImpl implements MappingService {
                 }
                 workingCopy = (ObjectNode) arrayNode.get(index);
             } else {
-                if (arrayNode.size() > 1)
+                if (arrayNode.size() > 0) {
+                    arrayNode.insert(arrayNode.size(),JsonNodeFactory.instance.objectNode());
                     workingCopy = (ObjectNode) arrayNode.get(arrayNode.size() - 1);
+                }
                 else {
                     arrayNode.insert(0, JsonNodeFactory.instance.objectNode());
                     workingCopy = (ObjectNode) arrayNode.get(0);
@@ -154,8 +155,10 @@ public class MappingServiceImpl implements MappingService {
             if(!workingCopy.has(key))
                 workingCopy.putArray(key);
             ArrayNode arrayNode = (ArrayNode) workingCopy.get(key);
-            if (arrayNode.size() > 0)
+            if (arrayNode.size() > 0) {
+                arrayNode.insert(arrayNode.size(),JsonNodeFactory.instance.objectNode());
                 workingCopy = (ObjectNode) arrayNode.get(arrayNode.size() - 1);
+            }
             else{
                 arrayNode.insert(0, JsonNodeFactory.instance.objectNode());
                 workingCopy = (ObjectNode) arrayNode.get(0);
@@ -181,7 +184,7 @@ public class MappingServiceImpl implements MappingService {
             else {
                 arrayNode = workingCopy.putArray(key);
             }
-            accommodateIndexInsert(arrayNode, iteration, value);
+            accommodateIndexInsert(arrayNode, -1, value);
 
         }
 
@@ -204,8 +207,10 @@ public class MappingServiceImpl implements MappingService {
     }
 
     private void insertAtLatestIndex(ArrayNode arrayNode, String value) {
-        if (arrayNode.size() > 1)
+        if (arrayNode.size() > 0){
+            arrayNode.insert(arrayNode.size(),value);
             arrayNode.set(arrayNode.size() - 1, value);
+        }
         else
             arrayNode.insert(0, value);
     }
