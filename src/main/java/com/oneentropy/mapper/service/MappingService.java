@@ -16,5 +16,8 @@ public interface MappingService {
 
     JsonNode mapDataToJsonNode(JsonNode template, Map<String, String> data, int iteration, List<AttributeMap> attributeMapList, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException;
 
+    JsonNode mapDataToJsonNode(List<Map<String, String>> data, String mappingConf,PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException;
+
+    JsonNode mapDataToJsonNode(Map<String, String> data, String mappingConf,PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException;
 
 }
