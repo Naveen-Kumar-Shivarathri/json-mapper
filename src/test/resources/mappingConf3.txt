@@ -1,0 +1,4 @@
+#Employee JSON Mapping
+
+fName,required = employee.info.pii.firstName
+add(.*),regx = employee.additionalDetails.(1)[]= $srcValue+"-regx Modified"
