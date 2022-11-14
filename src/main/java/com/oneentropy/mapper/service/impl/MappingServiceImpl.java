@@ -17,6 +17,7 @@ import com.oneentropy.mapper.service.MappingConfReaderService;
 import com.oneentropy.mapper.service.MappingService;
 import com.oneentropy.mapper.util.MappingUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -288,11 +289,17 @@ public class MappingServiceImpl implements MappingService {
             for (int arrayIteration = arrayNode.size(); arrayIteration <= index; arrayIteration++)
                 arrayNode.insert(arrayIteration, "");
         }
-        arrayNode.set(index, value);
+        if (MappingUtil.isJsonArray(value)){
+            arrayNode.set(index, MappingUtil.parseValueAsArrayNode(value));
+        }
+        else
+            arrayNode.set(index, value);
     }
 
     private void insertAtLatestIndex(ArrayNode arrayNode, String value) {
-        if (arrayNode.size() > 0) {
+        if (MappingUtil.isJsonArray(value)) {
+            insertValueAsJsonArray(arrayNode, value);
+        } else if (arrayNode.size() > 0) {
             arrayNode.insert(arrayNode.size(), value);
             arrayNode.set(arrayNode.size() - 1, value);
         } else
@@ -303,6 +310,14 @@ public class MappingServiceImpl implements MappingService {
         if (input.contains(","))
             return input.substring(0, input.lastIndexOf(","));
         return input;
+    }
+
+    private void insertValueAsJsonArray(ArrayNode arrayNode, String value) {
+        JSONArray jsonArray = new JSONArray(value);
+        int nodeSize = arrayNode.size();
+        for (int elementIterator = nodeSize; elementIterator < jsonArray.length() + nodeSize; elementIterator++) {
+            arrayNode.insert(elementIterator, jsonArray.get(elementIterator - nodeSize).toString());
+        }
     }
 
 

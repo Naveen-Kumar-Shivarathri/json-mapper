@@ -1,11 +1,17 @@
 package com.oneentropy.mapper.util;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.oneentropy.mapper.exceptions.InterpretException;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
+import org.json.JSONException;
 
+import javax.naming.spi.ObjectFactory;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -217,6 +223,38 @@ public class MappingUtil {
                 alteredPathTokens.add(pathToken);
         }
         return alteredPathTokens;
+    }
+
+    public static boolean isJsonArray(String value) {
+        try {
+            if (new JSONArray(value) != null)
+                return true;
+            return false;
+        } catch (JSONException e) {
+            return false;
+        }
+
+    }
+
+    public static JsonNode parseValueAsTree(String value){
+        try{
+            return mapper.readTree(value);
+        }catch(JsonProcessingException e){
+            return JsonNodeFactory.instance.arrayNode();
+        }
+    }
+
+    public static ArrayNode parseValueAsArrayNode(String value) {
+        ArrayNode arrayNode = JsonNodeFactory.instance.arrayNode();
+        try {
+            JSONArray array = new JSONArray(value);
+            for (int elementIterator = 0; elementIterator < array.length(); elementIterator++) {
+                arrayNode.insert(elementIterator, array.get(elementIterator).toString());
+            }
+        } catch (JSONException e) {
+            log.error("Error while parsing JSONArray:{}",e.getMessage());
+        }
+        return arrayNode;
     }
 
 
