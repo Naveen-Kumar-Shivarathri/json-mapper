@@ -1,0 +1,8 @@
+#Product JSON Mapping
+#Windchill internal attribute name = JSON Path = default value (optional)
+
+
+productName = gcp.product.name
+version = gcp.product.version = "V " + $srcValue
+createdBy = gcp.product.people[] = "CR\=" + $srcValue
+modifiedBy = gcp.product.people[1] = "MD\=" + $srcValue
