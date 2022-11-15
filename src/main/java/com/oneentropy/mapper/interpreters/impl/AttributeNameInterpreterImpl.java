@@ -15,6 +15,7 @@ import java.util.Map;
 public class AttributeNameInterpreterImpl implements ValueInterpreter {
 
     private static final String MANDATORY_ATTRIBUTE = "required";
+    private static final String REGX = "regx";
 
     @Override
     public String interpret(AttributeMap attributeMap, Map<String, String> data) throws InterpretException {
@@ -34,6 +35,9 @@ public class AttributeNameInterpreterImpl implements ValueInterpreter {
                 throw new MandatoryAttributeException("Excepting a valid value for attribute:" + attrKey);
             }
             return input;
+        } else if (meta.equals(REGX)) {
+            String attrKey = extractNonMetaInformation(input);
+
         }
         return input;
     }
@@ -46,7 +50,7 @@ public class AttributeNameInterpreterImpl implements ValueInterpreter {
 
     private String extractMetaInformation(String input) {
         if (input.contains(",")) {
-            return input.substring(input.lastIndexOf(",")+1);
+            return input.substring(input.lastIndexOf(",") + 1);
         }
         return "";
     }

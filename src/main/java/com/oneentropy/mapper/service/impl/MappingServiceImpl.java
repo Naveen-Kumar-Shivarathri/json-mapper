@@ -8,6 +8,7 @@ import com.oneentropy.mapper.exceptions.InterpretException;
 import com.oneentropy.mapper.functional.PostMapFunction;
 import com.oneentropy.mapper.functional.PreMapFunction;
 import com.oneentropy.mapper.interpreters.ValueInterpreter;
+import com.oneentropy.mapper.interpreters.impl.DefaultValueInterpreterImpl;
 import com.oneentropy.mapper.model.AttributeMap;
 import com.oneentropy.mapper.model.Data;
 import com.oneentropy.mapper.model.MultiLevelData;
@@ -16,17 +17,22 @@ import com.oneentropy.mapper.service.MappingConfReaderService;
 import com.oneentropy.mapper.service.MappingService;
 import com.oneentropy.mapper.util.MappingUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class MappingServiceImpl implements MappingService {
 
+    private static final String REGX = "regx";
     @Autowired
     @Qualifier("attrNameInterpreter")
     private ValueInterpreter attributeNameInterpreter;
@@ -63,7 +69,7 @@ public class MappingServiceImpl implements MappingService {
     @Override
     public JsonNode mapDataToJsonNode(JsonNode template, SingleLevelData singleLevelData, int activationLevel, String mappingConf, PreMapFunction preMapFunction, PostMapFunction postMapFunction) throws InterpretException {
         List<AttributeMap> attributeMaps = mappingConfReaderService.convertConfToAttributeMap(mappingConf);
-        return mapDataToJsonNode(template,singleLevelData,activationLevel,attributeMaps,preMapFunction,postMapFunction);
+        return mapDataToJsonNode(template, singleLevelData, activationLevel, attributeMaps, preMapFunction, postMapFunction);
     }
 
     @Override
@@ -131,13 +137,42 @@ public class MappingServiceImpl implements MappingService {
         }
 
         for (AttributeMap attributeMap : attributeMapList) {
-            if (attributeNameInterpreter.interpret(attributeMap, data) != null) {
+            String meta = MappingUtil.extractMetaInformation(attributeMap.getOriginalKey());
+            if (MappingUtil.hasContent(meta) && meta.equals(REGX)) {
+                processRegx(attributeMap, workingCopy, data, activationLevel);
+            } else if (attributeNameInterpreter.interpret(attributeMap, data) != null) {
                 String value = defaultValueInterpreter.interpret(attributeMap, data);
                 if (value == null) {
                     value = data.get(extractNonMetaInformation(attributeMap.getOriginalKey()));
                 }
                 if (value != null)
                     insertValue(attributeMap.getPath(), value, activationLevel, workingCopy, attributeMap.getOriginalKey());
+            }
+        }
+
+    }
+
+    private void processRegx(AttributeMap attributeMap, ObjectNode workingCopy, Map<String, String> data, int activationLevel) throws InterpretException {
+        String nonMeta = MappingUtil.extractNonMetaInformation(attributeMap.getOriginalKey());
+        if (!MappingUtil.hasContent(nonMeta)) {
+            log.info("Expecting a valid regular expression for attribute map:{}", attributeMap);
+            return;
+        }
+        Pattern patten = Pattern.compile(nonMeta);
+        Matcher matcher = null;
+        DefaultValueInterpreterImpl defaultValueInterpreter1 = (DefaultValueInterpreterImpl) defaultValueInterpreter;
+        for (Map.Entry<String, String> dataEntry : data.entrySet()) {
+            matcher = patten.matcher(dataEntry.getKey());//Handle DDOS
+            if (matcher.matches()) {
+                Set<Integer> indices = MappingUtil.determineGroupIndicesFromPath(attributeMap.getPath());
+                MappingUtil.validateGroupIndices(matcher, indices);
+                List<String> pathTokens = MappingUtil.substituteGroupsInPathTokens(dataEntry.getKey(), matcher, attributeMap.getPath());
+                String value = defaultValueInterpreter1.interpret(dataEntry.getKey(), attributeMap, data);
+                if (value == null) {
+                    value = dataEntry.getValue();
+                }
+                if (value != null)
+                    insertValue(pathTokens, value, activationLevel, workingCopy, attributeMap.getOriginalKey());
             }
         }
 
@@ -254,11 +289,17 @@ public class MappingServiceImpl implements MappingService {
             for (int arrayIteration = arrayNode.size(); arrayIteration <= index; arrayIteration++)
                 arrayNode.insert(arrayIteration, "");
         }
-        arrayNode.set(index, value);
+        if (MappingUtil.isJsonArray(value)){
+            arrayNode.set(index, MappingUtil.parseValueAsArrayNode(value));
+        }
+        else
+            arrayNode.set(index, value);
     }
 
     private void insertAtLatestIndex(ArrayNode arrayNode, String value) {
-        if (arrayNode.size() > 0) {
+        if (MappingUtil.isJsonArray(value)) {
+            insertValueAsJsonArray(arrayNode, value);
+        } else if (arrayNode.size() > 0) {
             arrayNode.insert(arrayNode.size(), value);
             arrayNode.set(arrayNode.size() - 1, value);
         } else
@@ -269,6 +310,14 @@ public class MappingServiceImpl implements MappingService {
         if (input.contains(","))
             return input.substring(0, input.lastIndexOf(","));
         return input;
+    }
+
+    private void insertValueAsJsonArray(ArrayNode arrayNode, String value) {
+        JSONArray jsonArray = new JSONArray(value);
+        int nodeSize = arrayNode.size();
+        for (int elementIterator = nodeSize; elementIterator < jsonArray.length() + nodeSize; elementIterator++) {
+            arrayNode.insert(elementIterator, jsonArray.get(elementIterator - nodeSize).toString());
+        }
     }
 
 

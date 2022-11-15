@@ -1,13 +1,18 @@
 package com.oneentropy.mapper.util;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.oneentropy.mapper.exceptions.InterpretException;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
+import org.json.JSONException;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import javax.naming.spi.ObjectFactory;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,11 +21,16 @@ public class MappingUtil {
 
     public static final ObjectMapper mapper = new ObjectMapper();
 
+    public static final String GROUP_SUBSTITUTION_REGX = "(\\((\\d+)\\))(\\[\\d*\\])?";
+
     public static boolean hasContent(Object value) {
         if (value == null)
             return false;
         if (value instanceof String) {
             if (value.equals(""))
+                return false;
+        } else if (value instanceof Set) {
+            if (((Set) value).size() == 0)
                 return false;
         }
 
@@ -28,8 +38,8 @@ public class MappingUtil {
     }
 
     public static boolean hasContent(Object[] values) {
-        for(Object value: values){
-            if(!hasContent(value))
+        for (Object value : values) {
+            if (!hasContent(value))
                 return false;
         }
         return true;
@@ -67,7 +77,7 @@ public class MappingUtil {
                     buffer.append(currChar);
                 }
             } else if (currChar == '\\') {
-                if(prevChar==currChar)
+                if (prevChar == currChar)
                     buffer.append(currChar);
                 else
                     prevChar = currChar;
@@ -119,7 +129,7 @@ public class MappingUtil {
         Matcher matcher = pattern.matcher(token);
         if (matcher.matches()) {
             String key = matcher.group(1);
-            if(key!=null)
+            if (key != null)
                 return key;
 
         }
@@ -149,5 +159,103 @@ public class MappingUtil {
             return "";
         }
     }
+
+    public static String extractNonMetaInformation(String input) {
+        if (input.contains(","))
+            return input.substring(0, input.lastIndexOf(","));
+        return input;
+    }
+
+    public static String extractMetaInformation(String input) {
+        if (input.contains(",")) {
+            return input.substring(input.lastIndexOf(",") + 1);
+        }
+        return "";
+    }
+
+    public static Set<Integer> determineGroupIndicesFromPath(List<String> pathTokens) throws InterpretException {
+        Set<Integer> groupIndices = new HashSet<>();
+        if (!hasContent(pathTokens))
+            return groupIndices;
+        Pattern pattern = Pattern.compile(GROUP_SUBSTITUTION_REGX);
+        Matcher matcher = null;
+        for (String pathToken : pathTokens) {
+            matcher = pattern.matcher(pathToken);
+            if (matcher.matches()) {
+                try {
+                    int groupIndex = Integer.parseInt(matcher.group(2));
+                    groupIndices.add(groupIndex);
+                } catch (NumberFormatException e) {
+                    throw new InterpretException("Expecting a valid group number, but found:" + matcher.group(2) + ", for path:" + pathToken);
+                }
+            }
+        }
+        return groupIndices;
+    }
+
+    public static void validateGroupIndices(Matcher matcher, Set<Integer> indices) throws InterpretException {
+        if (!MappingUtil.hasContent(indices))
+            return;
+        for (Integer index : indices) {
+            if (!MappingUtil.hasContent(matcher.group(index)))
+                throw new InterpretException("No value found at group index:" + index);
+        }
+    }
+
+    public static List<String> substituteGroupsInPathTokens(String attribute, Matcher matcher, List<String> pathTokens) {
+        Pattern pattern = Pattern.compile(GROUP_SUBSTITUTION_REGX);
+        Matcher patternMatcher = null;
+        List<String> alteredPathTokens = new LinkedList<>();
+        for (String pathToken : pathTokens) {
+            if (pathToken.equals("*")) {
+                alteredPathTokens.add(attribute);
+                continue;
+            }
+            patternMatcher = pattern.matcher(pathToken);
+            if (patternMatcher.matches()) {
+                int index = Integer.parseInt(patternMatcher.group(2));
+                String groupValue = matcher.group(index);
+                if (patternMatcher.group(3) != null) {
+                    groupValue += patternMatcher.group(3);
+                }
+                alteredPathTokens.add(groupValue);
+            } else
+                alteredPathTokens.add(pathToken);
+        }
+        return alteredPathTokens;
+    }
+
+    public static boolean isJsonArray(String value) {
+        try {
+            if (new JSONArray(value) != null)
+                return true;
+            return false;
+        } catch (JSONException e) {
+            return false;
+        }
+
+    }
+
+    public static JsonNode parseValueAsTree(String value){
+        try{
+            return mapper.readTree(value);
+        }catch(JsonProcessingException e){
+            return JsonNodeFactory.instance.arrayNode();
+        }
+    }
+
+    public static ArrayNode parseValueAsArrayNode(String value) {
+        ArrayNode arrayNode = JsonNodeFactory.instance.arrayNode();
+        try {
+            JSONArray array = new JSONArray(value);
+            for (int elementIterator = 0; elementIterator < array.length(); elementIterator++) {
+                arrayNode.insert(elementIterator, array.get(elementIterator).toString());
+            }
+        } catch (JSONException e) {
+            log.error("Error while parsing JSONArray:{}",e.getMessage());
+        }
+        return arrayNode;
+    }
+
 
 }

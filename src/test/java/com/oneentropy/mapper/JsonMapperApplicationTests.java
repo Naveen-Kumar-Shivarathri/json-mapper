@@ -24,6 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,6 +86,34 @@ class JsonMapperApplicationTests {
 		data.put("seniorityDateEndA","1stJan, 2008");
 		data.put("seniorityDateStartB","1stJan, 2008");
 		data.put("seniorityDateEndB","1stJan, 2016");
+		Data dataObj = new Data(data);
+		JsonNode node = mappingService.mapDataToJsonNode(null,dataObj,-1,attributeMaps,null,null);
+		log.info("node:{}",node);
+
+
+	}
+
+	@Test
+	public void testObjectNodeRegxData() throws IOException, InterpretException {
+
+		String path = "mappingConf3.txt";
+		String rawData = readFromFile(path);
+		MappingConf mappingConf = mappingConfReaderService.parseMappingConf(rawData);
+		List<AttributeMap> attributeMaps = mappingConfReaderService.convertConfToAttributeMap(mappingConf);
+		Map<String, String> data = new HashMap<>();
+		data.put("fName","Jack");
+		data.put("addlName-A","Sparrow");
+		data.put("addage-A","24");
+		data.put("adddob-A","01-01-1990");
+		data.put("seniorityDateStartA","1stJan, 1998");
+		data.put("seniorityDateEndA","1stJan, 2008");
+		data.put("seniorityDateStartB","1stJan, 2008");
+		data.put("seniorityDateEndB","1stJan, 2016");
+		List<String> values = new ArrayList<>();
+		values.add("Value1");
+		values.add("value2");
+		values.add("value3");
+		data.put("jsonArray",values.toString());
 		Data dataObj = new Data(data);
 		JsonNode node = mappingService.mapDataToJsonNode(null,dataObj,-1,attributeMaps,null,null);
 		log.info("node:{}",node);
