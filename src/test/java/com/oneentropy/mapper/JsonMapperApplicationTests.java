@@ -24,10 +24,8 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @SpringBootTest(classes={MapperConfig.class})
@@ -35,6 +33,9 @@ import java.util.stream.Stream;
 class JsonMapperApplicationTests {
 
 	private static final ObjectMapper mapper = new ObjectMapper();
+
+	private static final String MULTI_VALUE_DELIMITER_REGX = "\\|~\\*~\\|";
+	private static final String MULTI_VALUE_DELIMITER = "|~*~|";
 
 	@Autowired
 	private MappingConfReaderService mappingConfReaderService;
@@ -119,6 +120,26 @@ class JsonMapperApplicationTests {
 		log.info("node:{}",node);
 
 
+	}
+
+	@Test
+	public void playground(){
+		String data = "value1|~*~|value2";
+		String transformedValue = transformValue(data);
+		log.info(transformedValue);
+	}
+
+	private  String transformValue(String rawValue){
+		if(rawValue.contains(MULTI_VALUE_DELIMITER))
+			return handleMultiValueType(rawValue);
+		return rawValue;
+	}
+
+	private  String handleMultiValueType(String rawValue){
+
+		String[] split = rawValue.split(MULTI_VALUE_DELIMITER_REGX, -1);
+		log.debug("Split data:{}", Arrays.toString(split));
+		return Arrays.stream(split).collect(Collectors.toList()).toString();
 	}
 
 	private String readFromFile(String relativePath) throws IOException{
